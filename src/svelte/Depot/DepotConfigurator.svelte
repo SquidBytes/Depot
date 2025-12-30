@@ -19,6 +19,8 @@ limitations under the License.
   import EnumField from "../Fields/EnumField.svelte";
   import LongTextField from "../Fields/LongTextField.svelte";
   import NumberField from "../Fields/NumberField.svelte";
+  import DateField from "../Fields/DateField.svelte";
+  import IntegerNumberField from "../Fields/IntegerNumberField.svelte";
   import TextField from "../Fields/TextField.svelte";
   import { createEventDispatcher } from "svelte";
   import ConfigLineSelect from "../Fields/Config/ConfigLineSelect.svelte";
@@ -105,6 +107,18 @@ limitations under the License.
       needsColumnUpdate = false;
     }
   }
+
+  let prevDefaultToCurrentDate = false;
+  $: {
+    if (config.active && data && data.typeStr === "date") {
+      if (data.defaultToCurrentDate && !prevDefaultToCurrentDate) {
+        data.defaultValue = new Date().setHours(0, 0, 0, 0);
+      }
+      prevDefaultToCurrentDate = data.defaultToCurrentDate;
+    } else {
+      prevDefaultToCurrentDate = false;
+    }
+  }
 </script>
 
 {#if config.active}
@@ -153,8 +167,12 @@ limitations under the License.
 
               <!-- {:else if configuration[fieldName] === "multiple"}
                 <div><MultipleField bind:data={data[fieldName]}/></div> -->
-            {:else if columnSettings[fieldName] === "int" || columnSettings[fieldName] === "float"}
+            {:else if columnSettings[fieldName] === "int"}
+              <div><IntegerNumberField bind:data={data[fieldName]} /></div>
+            {:else if columnSettings[fieldName] === "float"}
               <div><NumberField bind:data={data[fieldName]} /></div>
+            {:else if columnSettings[fieldName] === "date"}
+              <div><DateField bind:data={data[fieldName]} /></div>
             {:else if columnSettings[fieldName] === "enum"}
               <div>
                 <EnumField

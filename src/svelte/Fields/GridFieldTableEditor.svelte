@@ -4,6 +4,8 @@ import BooleanField from "./BooleanField.svelte";
 import EnumField from "./EnumField.svelte";
 import LongTextField from "./LongTextField.svelte";
 import NumberField from "./NumberField.svelte";
+import IntegerNumberField from "./IntegerNumberField.svelte";
+import DateField from "./DateField.svelte";
 import TextField from "./TextField.svelte";
 
 export let data;
@@ -33,8 +35,12 @@ $ : {
                             <BooleanField bind:data={data[i]}/>
                         {:else if schema === "longtext"}
                             <LongTextField bind:data={data[i]}/>
-                        {:else if schema === "float" || schema === "int"}
+                        {:else if schema === "float"}
                             <NumberField bind:data={data[i]}/>
+                        {:else if schema === "int"}
+                            <IntegerNumberField bind:data={data[i]}/>
+                        {:else if schema === "date"}
+                            <DateField bind:data={data[i]}/>
                         {/if}
                         </div>
                     </td>

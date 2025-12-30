@@ -16,7 +16,7 @@ limitations under the License.
 <script>
   import { createEventDispatcher, getContext } from "svelte";
   import resolvePath from "object-resolve-path";
-  import { defaults } from "./depotDefaults";
+  import { defaults, getDefaultColumnValue } from "./depotDefaults";
   import DepotOptions from "./DepotOptions.svelte";
   import DepotSheet from "./DepotSheet.svelte";
   import DepotConfigurator from "./DepotConfigurator.svelte";
@@ -130,11 +130,7 @@ limitations under the License.
       newLine["guid"] = uuidv4();
       newLine["id"] = data.sheets[sheetIndex].lines.length + "";
       data.sheets[sheetIndex].columns.forEach((column) => {
-        if (column.typeStr == "multiple") {
-          newLine[column.name] = column.defaultValue.split(", ");
-        } else {
-          newLine[column.name] = column.defaultValue;
-        }
+        newLine[column.name] = getDefaultColumnValue(column);
       });
       data.sheets[sheetIndex].lines = [
         ...data.sheets[sheetIndex].lines,
@@ -322,11 +318,7 @@ limitations under the License.
             data.sheets[sheetIndex].columns.push(editorData);
             //if you're creating a column, create a new entry for a column value in every line based off the default value
             iterateSheetLines(sheetIndex, (line) => {
-              if (editorData.typeStr === "multiple") {
-                line[editorData.name] = editorData.defaultValue.split(", ");
-              } else {
-                line[editorData.name] = editorData.defaultValue;
-              }
+              line[editorData.name] = getDefaultColumnValue(editorData);
             });
             if (
               editorData.typeStr === "list" ||

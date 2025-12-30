@@ -169,6 +169,7 @@ limitations under the License.
         text-align: left;
         border-collapse: collapse;
         background: var(--vscode-editor-background);
+        table-layout: fixed;
     }
     :global(table td) {
         border-right: 1px solid var(--vscode-panel-border);
@@ -186,7 +187,7 @@ limitations under the License.
         /* padding-left: 5px; */
         padding: 5px;
     }
-    :global(table th) {
+	:global(table th) {
         border-right: 1px solid var(--vscode-panel-border);
         border-left:  1px solid var(--vscode-panel-border);
         background: var(--vscode-editor-background);
@@ -195,6 +196,9 @@ limitations under the License.
         text-align: left;
 				position: sticky;
 				top: 0;
+        z-index: 3;
+        box-shadow: 0 2px 0 var(--vscode-panel-border);
+        padding: 4px 6px;
     }
 
 </style>

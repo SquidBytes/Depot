@@ -4,6 +4,8 @@ import BooleanField from "./BooleanField.svelte";
 import EnumField from "./EnumField.svelte";
 import LongTextField from "./LongTextField.svelte";
 import NumberField from "./NumberField.svelte";
+import IntegerNumberField from "./IntegerNumberField.svelte";
+import DateField from "./DateField.svelte";
 import TextField from "./TextField.svelte";
 
 export let schemaData;
@@ -55,25 +57,25 @@ function schemaUpdated(index) {
     <tr>
         <td>Length</td>
         <td>
-            <NumberField bind:data={length}/>
+            <IntegerNumberField bind:data={length}/>
         </td>
     </tr>
     <tr>
         <td>Display Width</td>
         <td>
-            <NumberField bind:data={displayWidth}/>
+            <IntegerNumberField bind:data={displayWidth}/>
         </td>
     </tr>
     <tr>
         <td>Column Width</td>
         <td>
-            <NumberField bind:data={columnWidth}/>
+            <IntegerNumberField bind:data={columnWidth}/>
         </td>
     </tr>
     <tr>
         <td>Column Height</td>
         <td>
-            <NumberField bind:data={columnHeight}/>
+            <IntegerNumberField bind:data={columnHeight}/>
         </td>
     </tr>
 </table>
@@ -96,8 +98,12 @@ function schemaUpdated(index) {
                             <BooleanField bind:data={defaultValues[i]}/>
                         {:else if schema === "longtext"}
                             <LongTextField bind:data={defaultValues[i]}/>
-                        {:else if schema === "float" || schema === "int"}
+                        {:else if schema === "float"}
                             <NumberField bind:data={defaultValues[i]}/>
+                        {:else if schema === "int"}
+                            <IntegerNumberField bind:data={defaultValues[i]}/>
+                        {:else if schema === "date"}
+                            <DateField bind:data={defaultValues[i]}/>
                         {/if}
                         </div>
                     </td>

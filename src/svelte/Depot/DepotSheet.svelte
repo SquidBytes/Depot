@@ -23,8 +23,10 @@ import ImageField from '../Fields/ImageField.svelte';
 import LongTextField from '../Fields/LongTextField.svelte';
 import MultipleField from '../Fields/MultipleField.svelte';
 import NumberField from '../Fields/NumberField.svelte';
+import IntegerNumberField from '../Fields/IntegerNumberField.svelte';
+import DateField from '../Fields/DateField.svelte';
 import FileField from '../Fields/FileField.svelte';
-import {defaults} from './depotDefaults';
+import {defaults, defaultColumnWidth, getDefaultColumnValue} from './depotDefaults';
 import { v4 as uuidv4 } from 'uuid';
 
 import { createEventDispatcher } from 'svelte';
@@ -52,6 +54,128 @@ let iconPaths = getContext("iconPaths");
 export let lastHovered;
 export let parentGUID = "";
 export let baseDataPath = "";
+let draggingIndex = null;
+let dragOverIndex = null;
+let resizingColumnGUID = null;
+let resizeStartX = 0;
+let resizeStartWidth = defaultColumnWidth;
+const SPECIAL_COLUMNS = {
+    controls: "__controls",
+    guid: "__guid",
+    id: "id"
+};
+
+function getColumnWidth(columnOrKey) {
+    if (typeof columnOrKey === "string") {
+        const fallback =
+            columnOrKey === SPECIAL_COLUMNS.controls
+                ? 90
+                : columnOrKey === SPECIAL_COLUMNS.guid
+                ? 260
+                : columnOrKey === SPECIAL_COLUMNS.id
+                ? 120
+                : defaultColumnWidth;
+        const width =
+            sheetData &&
+            sheetData.columnWidths &&
+            Number(sheetData.columnWidths[columnOrKey]);
+        return Number.isFinite(width) && width > 20 ? width : fallback;
+    }
+    const width = columnOrKey && Number(columnOrKey.width);
+    return Number.isFinite(width) && width > 20 ? width : defaultColumnWidth;
+}
+
+function startDrag(index) {
+    draggingIndex = index;
+}
+
+function handleDragOver(index, event) {
+    if (draggingIndex === null || !Array.isArray(inputLineData)) {
+        return;
+    }
+    event.preventDefault();
+    dragOverIndex = index;
+}
+
+function dropOn(index) {
+    if (draggingIndex === null || !Array.isArray(inputLineData)) {
+        resetDrag();
+        return;
+    }
+    moveLine(draggingIndex, index);
+    resetDrag();
+}
+
+function moveLine(fromIndex, toIndex) {
+    if (fromIndex === toIndex) {
+        return;
+    }
+    if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= inputLineData.length ||
+        toIndex >= inputLineData.length
+    ) {
+        return;
+    }
+    const updatedLines = [...inputLineData];
+    const [movedLine] = updatedLines.splice(fromIndex, 1);
+    updatedLines.splice(toIndex, 0, movedLine);
+    inputLineData = updatedLines;
+}
+
+function resetDrag() {
+    draggingIndex = null;
+    dragOverIndex = null;
+}
+
+function startColumnResize(column, event) {
+    resizingColumnGUID = column.guid;
+    resizeStartX = event.clientX;
+    resizeStartWidth = getColumnWidth(column);
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function handleMouseMove(event) {
+    if (!resizingColumnGUID) {
+        return;
+    }
+    const delta = event.clientX - resizeStartX;
+    const newWidth = Math.max(60, resizeStartWidth + delta);
+    applyColumnWidth(resizingColumnGUID, newWidth);
+}
+
+function endColumnResize() {
+    resizingColumnGUID = null;
+}
+
+function applyColumnWidth(columnGUID, width) {
+    const sheetIndex = fullData.sheets.findIndex((s) => s.guid === sheetData.guid);
+    if (sheetIndex < 0) {
+        return;
+    }
+    // special pseudo columns (controls/id/guid) get stored on sheet metadata
+    const specialKeys = Object.values(SPECIAL_COLUMNS);
+    if (specialKeys.includes(columnGUID)) {
+        const colWidths = {
+            ...(fullData.sheets[sheetIndex].columnWidths || {}),
+            [columnGUID]: width
+        };
+        fullData.sheets[sheetIndex] = {
+            ...fullData.sheets[sheetIndex],
+            columnWidths: colWidths
+        };
+    } else {
+        const updatedColumns = fullData.sheets[sheetIndex].columns.map((col) =>
+            col.guid === columnGUID ? { ...col, width } : col
+        );
+        fullData.sheets[sheetIndex] = { ...fullData.sheets[sheetIndex], columns: updatedColumns };
+    }
+    // trigger bindings
+    fullData = { ...fullData, sheets: [...fullData.sheets] };
+    sheetData = fullData.sheets[sheetIndex];
+}
 
 function enterSheet() {
     dispatch('message', {
@@ -156,14 +280,7 @@ function handleSubTableEvent(event) {
                         var newLine = {};
                         newLine["guid"] = uuidv4();
                         fullData.sheets[nestedSheetIndex].columns.forEach(column => {
-                            if(column.typeStr == "multiple")
-                            {
-                                newLine[column.name] = column.defaultValue.split(', ');
-                            }
-                            else
-                            {
-                                newLine[column.name] = Array.isArray(column.defaultValue) ? column.defaultValue.split() : column.defaultValue;
-                            }
+                            newLine[column.name] = getDefaultColumnValue(column);
                         });
                         //if the sheet we clicked add on isn't a props sheet
                         if(!fullData.sheets[nestedSheetIndex].isProps) {
@@ -370,6 +487,7 @@ function validateID(event,line) {
 }
 
 </script>
+<svelte:window on:mousemove={handleMouseMove} on:mouseup={endColumnResize}/>
 <table on:mouseenter={enterSheet} on:mouseleave={leaveSheet}>
 <!-- This checks if this is a nested sheet, in which case we want to have the UI visible -->
 {#if sheetData.hidden}
@@ -395,24 +513,47 @@ function validateID(event,line) {
     {/if}
 {/if}
 <tr>
-    <th>    </th>
+    <th style={`width:${getColumnWidth(SPECIAL_COLUMNS.controls)}px; min-width:50px;`}>
+        <div class="columnHeader">
+            <span>Actions</span>
+            <span class="resizeHandle" title="Drag to resize column" on:mousedown={(event) => startColumnResize({ guid: SPECIAL_COLUMNS.controls }, event)}></span>
+        </div>
+    </th>
     {#if showLineGUIDs}
-    <th>GUID</th>
+    <th style={`width:${getColumnWidth(SPECIAL_COLUMNS.guid)}px; min-width:120px;`}>
+        <div class="columnHeader">
+            <span>GUID</span>
+            <span class="resizeHandle" title="Drag to resize column" on:mousedown={(event) => startColumnResize({ guid: SPECIAL_COLUMNS.guid }, event)}></span>
+        </div>
+    </th>
     {/if}
     {#if !sheetData.isProps}
-    <th>ID</th>
+    <th style={`width:${getColumnWidth(SPECIAL_COLUMNS.id)}px; min-width:80px;`}>
+        <div class="columnHeader">
+            <span>ID</span>
+            <span class="resizeHandle" title="Drag to resize column" on:mousedown={(event) => startColumnResize({ guid: SPECIAL_COLUMNS.id }, event)}></span>
+        </div>
+    </th>
     {/if}
-    {#each sheetData.columns as column}
-        <th title="{column.description}">{#if allowSchemaEditing}<a href={"#"} on:click={()=> editColumn(column.name)}>{column.name}</a>{:else}{column.name}{/if}</th>
-    {/each}
+{#each sheetData.columns as column}
+    <th title="{column.description}" style={`width:${getColumnWidth(column)}px; min-width:60px;`}>
+        <div class="columnHeader">
+            {#if allowSchemaEditing}<a href={"#"} on:click={()=> editColumn(column.name)}>{column.name}</a>{:else}{column.name}{/if}
+            <span class="resizeHandle" title="Drag to resize column" on:mousedown={(event) => startColumnResize(column, event)}></span>
+        </div>
+    </th>
+{/each}
 </tr>
 {#if !sheetData.isProps}
     <!-- SHEET DRAWING FOR LIST/NORMAL SHEET -->
     {#each inputLineData as line, i}
     <!-- this prevents us from preemptively drawing empty an empty props entry -->
     {#if Object.keys(line).length !== 0}
-        <tr>
-            <td style="width:17px">
+        <tr class:dragTarget={dragOverIndex === i} class:dragging={draggingIndex === i} on:dragover|preventDefault={(event) => handleDragOver(i,event)} on:drop|preventDefault={() => dropOn(i)} on:dragleave={() => dragOverIndex = null}>
+            <td class="lineActions" style={`width:${getColumnWidth(SPECIAL_COLUMNS.controls)}px; min-width:50px;`}>
+                {#if Array.isArray(inputLineData) && inputLineData.length > 1}
+                    <span class="dragHandle" title="Drag to move line" draggable="true" on:dragstart={() => startDrag(i)} on:dragend={resetDrag}>::</span>
+                {/if}
                 {#if allowAddRemoveItems}
                     <button class="buttonIcon" title="Remove Line" on:click={() => removeLine(i,line,originLineGUID)}>
                         <img style="max-width:17px" src={iconPaths["removeLine"].path} alt="Remove Line">
@@ -423,11 +564,11 @@ function validateID(event,line) {
                 </button>
             </td>
             {#if showLineGUIDs}
-            <td>{line.guid}</td>
+            <td style={`width:${getColumnWidth(SPECIAL_COLUMNS.guid)}px; min-width:120px;`}>{line.guid}</td>
             {/if}
-            <td><TextField sheetGUID={sheetData.guid} bind:data={line["id"]} on:message={(event) => validateID(event,line)}/></td>
+            <td style={`width:${getColumnWidth(SPECIAL_COLUMNS.id)}px; min-width:80px;`}><TextField sheetGUID={sheetData.guid} bind:data={line["id"]} on:message={(event) => validateID(event,line)}/></td>
             {#each sheetData.columns as column, c}
-                <td title="{column.description}">
+                <td title="{column.description}" style={`width:${getColumnWidth(column)}px; min-width:60px;`}>
                 <div>
                 <!-- message from field updates bubble to Depot.svelte -->
                 {#if column.typeStr === "text"}
@@ -459,8 +600,12 @@ function validateID(event,line) {
                     {/if}
                 {:else if column.typeStr === "multiple"}
                 <MultipleField bind:data={line[column.name]} options={sheetData.columns.find(x => x.name === column.name).options.split(', ')} displayType={"displayType" in column ? column.displayType : "vertical"}/>
-                {:else if column.typeStr === "int" || column.typeStr === "float"}
-                <NumberField bind:data={line[column.name]}/>
+                {:else if column.typeStr === "int"}
+                <IntegerNumberField bind:data={line[column.name]} min={column.min} max={column.max}/>
+                {:else if column.typeStr === "float"}
+                <NumberField bind:data={line[column.name]} min={column.min} max={column.max}/>
+                {:else if column.typeStr === "date"}
+                <DateField bind:data={line[column.name]}/>
                 {:else if column.typeStr === "list" || column.typeStr === "props" || column.typeStr === "grid"}
                     {#if line.guid in listVisibility && listVisibility[line.guid].guid === column.guid}
                         <button class="buttonIcon" on:click={()=>setListVisible(line,column,false)}>
@@ -549,7 +694,7 @@ function validateID(event,line) {
     <!-- this prevents us from preemptively drawing empty an empty props entry -->
     {#if Object.keys(inputLineData).length !== 0}
         <tr>
-            <td style="width:17px">
+            <td class="lineActions" style={`width:${getColumnWidth(SPECIAL_COLUMNS.controls)}px; min-width:50px;`}>
                 {#if allowAddRemoveItems}
                     <button class="buttonIcon" title="Remove Line" on:click={() => removeLine(0,inputLineData,originLineGUID)}>
                         <img style="max-width:17px" src={iconPaths["removeLine"].path} alt="Remove Line">
@@ -557,10 +702,10 @@ function validateID(event,line) {
                 {/if}
             </td>
             {#if showLineGUIDs}
-            <td>{inputLineData.guid}</td>
+            <td style={`width:${getColumnWidth(SPECIAL_COLUMNS.guid)}px; min-width:120px;`}>{inputLineData.guid}</td>
             {/if}
             {#each sheetData.columns as column, c}
-                <td title="{column.description}">
+                <td title="{column.description}" style={`width:${getColumnWidth(column)}px; min-width:60px;`}>
                 <div>
                 <!-- message from field updates bubble to Depot.svelte -->
                 {#if column.typeStr === "text"}
@@ -592,8 +737,12 @@ function validateID(event,line) {
                     {/if}
                 {:else if column.typeStr === "multiple"}
                 <MultipleField bind:data={inputLineData[column.name]} options={sheetData.columns.find(x => x.name === column.name).options.split(', ')} displayType={"displayType" in column ? column.displayType : "vertical"}/>
-                {:else if column.typeStr === "int" || column.typeStr === "float"}
-                <NumberField bind:data={inputLineData[column.name]} />
+                {:else if column.typeStr === "int"}
+                <IntegerNumberField bind:data={inputLineData[column.name]} min={column.min} max={column.max}/>
+                {:else if column.typeStr === "float"}
+                <NumberField bind:data={inputLineData[column.name]} min={column.min} max={column.max}/>
+                {:else if column.typeStr === "date"}
+                <DateField bind:data={inputLineData[column.name]} />
                 {:else if column.typeStr === "list" || column.typeStr === "props" || column.typeStr === "grid"}
                     {#if inputLineData.guid in listVisibility && listVisibility[inputLineData.guid].guid === column.guid}
                         <button class="buttonIcon" on:click={()=>setListVisible(inputLineData,column,false)}>
@@ -737,5 +886,62 @@ function validateID(event,line) {
     .buttonIcon.addLine {
         margin: 5px 0px 5px 0px;
         padding: 0px 0px 0px 0px;
+    }
+
+    .lineActions {
+        width: 80px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .dragHandle {
+        cursor: grab;
+        font-weight: bold;
+        user-select: none;
+        color: var(--vscode-editor-foreground);
+        padding: 0px 4px;
+    }
+
+    tr.dragTarget {
+        outline: 1px dashed var(--vscode-focusBorder);
+    }
+
+    tr.dragging {
+        opacity: 0.7;
+    }
+
+    .columnHeader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        width: 100%;
+        position: relative;
+        padding-right: 14px;
+        box-sizing: border-box;
+    }
+
+    .columnHeader a {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .resizeHandle {
+        position: absolute;
+        top: 0;
+        right: -5px;
+        width: 14px;
+        height: 100%;
+        cursor: col-resize;
+        user-select: none;
+        border-left: 1px solid var(--vscode-panel-border);
+        background: linear-gradient(to right, transparent 0%, transparent 45%, var(--vscode-panel-border) 45%, var(--vscode-panel-border) 55%, transparent 55%, transparent 100%);
+        opacity: 0.7;
+    }
+
+    .resizeHandle:hover {
+        background: linear-gradient(to right, transparent 0%, transparent 35%, var(--vscode-focusBorder) 35%, var(--vscode-focusBorder) 65%, transparent 65%, transparent 100%);
+        opacity: 1;
     }
 </style>
