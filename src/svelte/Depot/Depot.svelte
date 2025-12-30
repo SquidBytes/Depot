@@ -904,107 +904,72 @@ limitations under the License.
 </script>
 
 {#if !data.hasOwnProperty("sheets")}
-  <h1>Depot</h1>
-  <p>Invalid Depot File</p>
-  <p>Use Ctrl/Cmd+Shift+P and select "Create new Depot File" to get started</p>
-{:else if data.sheets.length === 0}
-  <h1>Depot</h1>
-  <p>Click the button below to create sheet in Depot and get started</p>
-  <DepotConfigurator
-    {debug}
-    data={editorConfig.active ? editorData : {}}
-    config={editorConfig}
-    on:message={handleConfigUpdate}
-  />
-  {#if !editorConfig.active}
-    <button class="buttonIcon padded" title="New sheet" on:click={createSheet}>
-      <img src={iconPaths["newSheet"].path} alt="New Sheet" />
-    </button>
-  {/if}
+    <h1>Depot</h1>
+    <p>Invalid Depot File</p>
+    <p>Use Ctrl/Cmd+Shift+P and select "Create new Depot File" to get started</p>
 {:else}
-  <h1>{data.sheets[selectedSheet].name}</h1>
-  <p>{data.sheets[selectedSheet].description}</p>
-  <DepotOptions
-    bind:debug
-    bind:showLineGUIDs
-    bind:previewDisclosedFields
-    bind:showNestedNames
-    bind:showNestedPaths
-    bind:allowAddRemoveItems
-    bind:allowSchemaEditing
-  />
-  {#if allowSchemaEditing}
-    <button
-      class="buttonIcon padded"
-      title="New sheet"
-      disabled={editorConfig.active && selectedTool !== "newSheet"}
-      on:click={createSheet}
-    >
-      <img src={iconPaths["newSheet"].path} alt="New Sheet" />
-    </button>
-    <button
-      class="buttonIcon padded"
-      title="Edit sheet"
-      disabled={editorConfig.active && selectedTool !== "editSheet"}
-      on:click={selectedSheetEdit}
-    >
-      <img src={iconPaths["editSheet"].path} alt="Edit Sheet" />
-    </button>
-    {#each Object.keys(defaults) as columnType}
-      {#if columnType !== "sheet"}
-        <button
-          class="buttonIcon padded"
-          disabled={editorConfig.active && selectedTool !== columnType}
-          title="Create new {columnType} column"
-          on:click={() => selectedSheetColumnCreate(columnType)}
-        >
-          <img
-            src={iconPaths[defaults[columnType].iconName].path}
-            alt="Create new {columnType} column"
-          />
+    {#if data.sheets.length === 0}
+        <h1>Depot</h1>
+        <p>Click the button below to create sheet in Depot and get started</p>
+       <DepotConfigurator debug={debug} data={editorConfig.active ? editorData : {}} config={editorConfig} on:message={handleConfigUpdate}/>
+       {#if !editorConfig.active}
+       <button class="buttonIcon padded" title="New sheet" on:click={createSheet}>
+            <img src={iconPaths["newSheet"].path} alt="New Sheet">
         </button>
-      {/if}
-    {/each}
-  {/if}
-  <div>
-    {#each data.sheets as sheet}
-      {#if !sheet.hidden}
-        <button
-          class="sheetButton {data.sheets.indexOf(sheet) == selectedSheet
-            ? 'selected'
-            : ''}"
-          title="Select sheet"
-          on:click={focusSheet(data.sheets.indexOf(sheet))}
-          disabled={editorConfig.active}>{sheet.name}</button
-        >
-      {/if}
-    {/each}
-  </div>
-  <DepotConfigurator
-    {debug}
-    data={editorConfig.active ? editorData : {}}
-    config={editorConfig}
-    on:message={handleConfigUpdate}
-  />
-  {#if !editorConfig.active}
-    <!-- hide the table if editing a field to prevent sending the sheetupdate -->
-    <DepotSheet
-      {debug}
-      {showLineGUIDs}
-      {previewDisclosedFields}
-      {showNestedNames}
-      {showNestedPaths}
-      {allowSchemaEditing}
-      {allowAddRemoveItems}
-      bind:fullData={data}
-      bind:sheetData={data.sheets[selectedSheet]}
-      bind:inputLineData={data.sheets[selectedSheet].lines}
-      depotInfo={depotFileInfo}
-      on:message={handleTableAction}
-      bind:listVisibility
-      baseDataPath={data.sheets[selectedSheet].name}
-    />
-  {/if}
+        {/if}
+    {:else}
+        <h1>{data.sheets[selectedSheet].name}</h1>
+        <p>{data.sheets[selectedSheet].description}</p>
+        <DepotOptions bind:debug={debug}
+                      bind:showLineGUIDs={showLineGUIDs}
+                      bind:previewDisclosedFields={previewDisclosedFields}
+                      bind:showNestedNames={showNestedNames}
+                      bind:showNestedPaths={showNestedPaths} 
+                      bind:allowAddRemoveItems={allowAddRemoveItems} 
+                      bind:allowSchemaEditing={allowSchemaEditing}/> 
+        {#if allowSchemaEditing}
+            <button class="buttonIcon padded" title="New sheet" disabled={editorConfig.active && selectedTool !== "newSheet"} on:click={createSheet}>
+                <img src={iconPaths["newSheet"].path} alt="New Sheet">
+            </button>
+            <button class="buttonIcon padded" title="Edit sheet" disabled={editorConfig.active && selectedTool !== "editSheet"} on:click={selectedSheetEdit}>
+                <img src={iconPaths["editSheet"].path} alt="Edit Sheet">
+            </button>
+            {#each Object.keys(defaults) as columnType}
+                {#if columnType !== "sheet"}
+                    <button class="buttonIcon padded" disabled={editorConfig.active && selectedTool !== columnType} title="Create new {columnType} column" on:click={() => selectedSheetColumnCreate(columnType)}>
+                        <img src={iconPaths[defaults[columnType].iconName].path} alt="Create new {columnType} column">
+                    </button>
+                {/if}
+            {/each}
+        {/if}
+        <div class="sheets">
+            <div>
+            {#each data.sheets as sheet}
+                {#if !sheet.hidden}
+                <button class="sheetButton {data.sheets.indexOf(sheet) == selectedSheet ? "selected" : ""}" title="Select sheet" on:click={focusSheet(data.sheets.indexOf(sheet))} disabled={editorConfig.active}>{sheet.name}</button>
+                {/if}
+            {/each}
+            </div>
+            <DepotConfigurator debug={debug} data={editorConfig.active ? editorData : {}} config={editorConfig} on:message={handleConfigUpdate}/>
+            {#if !editorConfig.active}
+                <!-- hide the table if editing a field to prevent sending the sheetupdate -->
+                <DepotSheet debug={debug} 
+                            showLineGUIDs={showLineGUIDs} 
+                            previewDisclosedFields={previewDisclosedFields}
+                            showNestedNames={showNestedNames}
+                            showNestedPaths={showNestedPaths}
+                            allowSchemaEditing={allowSchemaEditing}
+                            allowAddRemoveItems={allowAddRemoveItems}
+                            bind:fullData={data} 
+                            bind:sheetData={data.sheets[selectedSheet]} 
+                            bind:inputLineData={data.sheets[selectedSheet].lines} 
+                            depotInfo={depotFileInfo} 
+                            on:message={handleTableAction}
+                            bind:listVisibility={listVisibility}
+                            baseDataPath={data.sheets[selectedSheet].name}/>
+            {/if}
+        </div>
+    {/if}
 {/if}
 
 {#if debug}
@@ -1014,63 +979,67 @@ limitations under the License.
 {/if}
 
 <style>
-  .buttonIcon {
-    background-color: #3a3a3a;
-    border: none;
-    color: white;
-    display: inline-block;
-    cursor: pointer;
-  }
+    .sheets {
+        background-color: var(--vscode-sideBar-background);
+    }
 
-  .buttonIcon:hover {
-    background-color: #2a2d2e;
-  }
+    .buttonIcon {
+        background-color: var(--vscode-button-background);
+        border: none;
+        color: var(--vscode-button-foreground);
+        display: inline-block;
+        cursor: pointer;
+    }
 
-  .buttonIcon:focus {
-    outline: none;
-    box-shadow: none;
-  }
-  .buttonIcon:active:focus {
-    outline: none;
-    box-shadow: none;
-  }
-  .buttonIcon.padded {
-    margin: 5px 5px 5px 0px;
-    width: 45px;
-    height: 45px;
-  }
-  .buttonIcon:disabled {
-    opacity: 40%;
-  }
-  .buttonIcon:disabled:hover {
-    background-color: #3a3a3a;
-  }
+    .buttonIcon:hover {
+        background-color: var(--vscode-button-hoverBackground);
+    }
 
-  .sheetButton {
-    background-color: #3a3a3a;
-    border: none;
-    color: white;
-    display: inline-block;
-    cursor: pointer;
-    margin: 0px 5px 0px 0px;
-    padding: 8px 8px 8px 8px;
-  }
-  .sheetButton:hover {
-    background-color: #252526;
-  }
-  .sheetButton.selected {
-    background-color: #252526;
-  }
-  .sheetButton:focus {
-    outline: none;
-    box-shadow: none;
-  }
-  .sheetButton:active:focus {
-    outline: none;
-    box-shadow: none;
-  }
+    .buttonIcon:focus {
+        outline: none;
+        box-shadow: none;
+    }
+    .buttonIcon:active:focus {
+        outline: none;
+        box-shadow: none;
+    }
+    .buttonIcon.padded {
+        margin: 5px 5px 5px 0px;
+        width: 45px;
+        height: 45px;
+    }
+    .buttonIcon:disabled {
+        opacity: 40%;
+    }
+    .buttonIcon:disabled:hover {
+        background-color: var(--vscode-button-background);
+    }
 
-  .rounded {
-    border-radius: 5px;
-  }
+    .sheetButton {
+        background-color: var(--vscode-tab-inactiveBackground);
+        border: 0px;
+        border-right: 1px solid var(--vscode-tab-border);
+        color: var(--vscode-tab-inactiveForeground);
+        display: inline-block;
+        cursor: pointer;
+        margin: 0px;
+        padding: 8px 8px 8px 8px;
+    }
+
+    .sheetButton:hover {
+        background-color: var(--vscode-tab-unfocusedHoverBackground);
+        color: var(--vscode-tab-unfocusedHoverForeground);
+    }
+    .sheetButton.selected {
+        background-color: var(--vscode-tab-activeBackground);
+        color: var(--vscode-tab-activeForeground);
+    }
+    .sheetButton:focus {
+        outline: none;
+        box-shadow: none;
+    }
+    .sheetButton:active:focus {
+        outline: none;
+        box-shadow: none;
+    }
 </style>

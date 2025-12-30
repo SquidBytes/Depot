@@ -34,6 +34,7 @@
 {/if}
 
 <style>
+<<<<<<< HEAD
   div {
     display: flex;
     flex-direction: row;
@@ -119,14 +120,29 @@
     box-sizing: border-box;
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
-    border: 0px;
+    border: 1px solid var(--vscode-input-border);
     font-size: 13px;
     border-width: 0px;
-    background-color: #3c3c3c;
-    color: #f0f0f0;
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
     width: 100%;
     height: 100%;
     box-sizing: border-box;
     resize: none;
   }
+=======
+    textarea {
+        padding: 5px 5px 5px 5px;
+        /* margin: 5px; */
+        box-sizing: border-box;
+        -webkit-box-sizing:border-box;
+        -moz-box-sizing: border-box;
+        font-size: 13px;
+				border: 1px solid var(--vscode-input-border);
+        background-color: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        width: 100%;
+        height: 100%;
+    }
+>>>>>>> pr-62
 </style>
